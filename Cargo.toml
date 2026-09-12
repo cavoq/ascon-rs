@@ -1,0 +1,28 @@
+[package]
+name = "ascon-rs"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+description = "Ascon cryptography from NIST SP 800-232"
+license = "GPL-3.0-only"
+repository = "https://github.com/cavoq/ascon-rs"
+documentation = "https://docs.rs/ascon-rs"
+readme = "README.md"
+keywords = ["ascon", "cryptography", "aead", "hash", "no-std"]
+categories = ["cryptography", "no-std"]
+include = ["src/**", "tests/**", "examples/basic.rs", "docs/**", "README.md", "LICENSE", "Cargo.lock"]
+
+[lib]
+name = "ascon"
+
+[workspace]
+members = ["ffi"]
+resolver = "2"
+
+[features]
+default = ["std"]
+std = []
+
+[dependencies]
+subtle = { version = "2.6", default-features = false }
+zeroize = { version = "1.8", default-features = false }

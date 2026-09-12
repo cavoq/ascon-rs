@@ -1,0 +1,129 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+env:
+  CARGO_TERM_COLOR: always
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test:
+    name: Build and test (${{ matrix.os }}, Rust ${{ matrix.toolchain }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            toolchain: stable
+          - os: macos-latest
+            toolchain: stable
+          - os: windows-latest
+            toolchain: stable
+          - os: ubuntu-latest
+            toolchain: "1.85.0"
+    env:
+      RUSTUP_TOOLCHAIN: ${{ matrix.toolchain }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Rust
+        run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal
+      - name: Build workspace and examples
+        run: cargo build --workspace --all-targets --locked
+      - name: Build release workspace and examples
+        run: cargo build --workspace --all-targets --release --locked
+      - name: Test workspace, known-answer vectors, and doctests
+        run: cargo test --workspace --locked
+      - name: Test optimized workspace
+        run: cargo test --workspace --release --locked
+      - name: Test without default features
+        run: cargo test -p ascon-rs --no-default-features --locked
+      - name: Check without default features
+        run: cargo check -p ascon-rs --no-default-features --locked
+      - name: Test C and C++ integration
+        if: runner.os == 'Linux'
+        run: bash scripts/test-c.sh
+
+  quality:
+    name: Formatting, linting, documentation, and package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      RUSTUP_TOOLCHAIN: stable
+      RUSTDOCFLAGS: -D warnings
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Rust and quality tools
+        run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+      - name: Check formatting
+        run: cargo fmt --all --check
+      - name: Lint workspace
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Lint without default features
+        run: cargo clippy -p ascon-rs --all-targets --no-default-features --locked -- -D warnings
+      - name: Build documentation
+        run: cargo doc --workspace --no-deps --locked
+      - name: Build documentation without default features
+        run: cargo doc -p ascon-rs --no-default-features --no-deps --locked
+      - name: Verify crates.io package builds
+        run: cargo package -p ascon-rs --locked
+
+  no_std:
+    name: Embedded no_std (Rust ${{ matrix.toolchain }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        toolchain: [stable, "1.85.0"]
+    env:
+      RUSTUP_TOOLCHAIN: ${{ matrix.toolchain }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Rust with a target that has no standard library
+        run: rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --target thumbv7em-none-eabi
+      - name: Build core library for embedded systems
+        run: cargo build -p ascon-rs --no-default-features --target thumbv7em-none-eabi --locked
+
+  reference:
+    name: Differential tests against the Ascon C reference
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check out the pinned reference implementation
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ascon/ascon-c
+          ref: 446347f21b209f3921c65ece70027c366cbe1693
+          path: .reference/ascon-c
+          persist-credentials: false
+      - name: Install Rust
+        run: rustup toolchain install stable --profile minimal
+      - name: Compare all four standardized algorithms
+        run: python3 scripts/test-reference.py .reference/ascon-c

@@ -1,0 +1,15 @@
+[package]
+name = "ascon-ffi"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+description = "C ABI for the ascon-rs NIST SP 800-232 library"
+license = "GPL-3.0-only"
+publish = false
+
+[lib]
+name = "ascon_ffi"
+crate-type = ["rlib", "staticlib", "cdylib"]
+
+[dependencies]
+ascon-rs = { path = "..", version = "0.1.0" }
