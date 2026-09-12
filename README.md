@@ -50,7 +50,7 @@ little-endian algorithms are incompatible with pre-standard Ascon v1.2.
 **Never reuse a nonce with the same key.** Applications manage key generation
 and per-key usage limits. Decryption authenticates before modifying output;
 stored keys and states are zeroized. See the
-[standards review and security limits](https://github.com/cavoq/ascon-rs/blob/master/docs/nist-sp-800-232-review.md).
+[AEAD usage requirements](https://docs.rs/ascon-rs/latest/ascon/struct.Aead128.html).
 This implementation has not undergone an independent security audit or NIST validation.
 
 For C/C++, clone the repository and run `cargo build -p ascon-ffi --release`.
@@ -61,7 +61,7 @@ The repository-only FFI crate produces static and shared libraries; see the
 Verification covers 4,228 reference vectors, 16 NIST examples, and 512 differential
 cases. CI builds and tests on Linux, macOS, and Windows, including Rust 1.85 and
 embedded `no_std` checks. Run `cargo test --workspace --locked` from a checkout.
-[Release instructions](https://github.com/cavoq/ascon-rs/blob/master/docs/releasing.md)
-describe publishing to crates.io from version tags after CI passes.
+The [release workflow](https://github.com/cavoq/ascon-rs/blob/master/.github/workflows/publish.yml)
+publishes matching version tags to crates.io after CI passes.
 
 License: [GPL-3.0-only](https://github.com/cavoq/ascon-rs/blob/master/LICENSE).
